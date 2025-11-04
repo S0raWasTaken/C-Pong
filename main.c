@@ -6,10 +6,8 @@
 #define NOGDI
 #define NOUSER
 #include <windows.h>
-void msleep(int milliseconds) { Sleep(milliseconds); }
 #else
 #include <unistd.h>
-void msleep(int milliseconds) { usleep(milliseconds * 1000); }
 #endif
 
 #include <raylib.h>
@@ -176,7 +174,7 @@ void tick(struct Game *game) {
     PlaySound(game->sounds.paddle_1);
   }
   if (is_colliding(p2, ball)) {
-    ball->speed_x = -abs(ball->speed_x + add);
+    ball->speed_x = -(abs(ball->speed_x) + add);
     ball->speed_y = add_abs(ball->speed_y, add);
     PlaySound(game->sounds.paddle_2);
   }
@@ -271,7 +269,13 @@ int main(void) {
 
   bool key_p_pressed = false;
 
+  int delay_frames = 0;
+  int test = 0;
+  const int DELAY_DURATION = 360; // 3 seconds at 120 FPS
+
   while (!WindowShouldClose()) {
+    printf("%d\n", test);
+    test++;
     if (IsKeyPressed(KEY_R))
       reset(&game);
 
@@ -295,18 +299,24 @@ int main(void) {
     draw(&game);
     if (game.debug)
       debug_lines(&game);
-    if (game.state != Pause)
+
+    if (game.state == Init || game.state == Score) {
+      if (delay_frames < DELAY_DURATION) {
+        PlaySound(game.sounds.start_score);
+        delay_frames++;
+      }
+      if (delay_frames >= DELAY_DURATION) {
+        game.state = Run;
+        delay_frames = 0;
+      }
+    }
+
+    if (game.state != Pause && game.state != Init && game.state != Score)
       tick(&game);
-    else
+    else if (game.state == Pause)
       draw_paused();
 
     EndDrawing();
-
-    if (game.state == Init || game.state == Score) {
-      PlaySound(game.sounds.start_score);
-      msleep(3000);
-      game.state = Run;
-    }
   }
 
   UnloadSound(paddle_1);
